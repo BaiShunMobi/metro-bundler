@@ -107,7 +107,7 @@ class Bundle extends BundleBase {
 
     const dependencyPairsMap = new Map();
     for (const [relativePath, dependencyModule] of dependencyPairs) {
-      dependencyPairsMap.set(relativePath, dependencyModule.path);
+      dependencyPairsMap.set(relativePath, dependencyModule);
     }
 
     return Promise.resolve(

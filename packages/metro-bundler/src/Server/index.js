@@ -98,6 +98,7 @@ export type Options = {|
   useDeltaBundler: boolean,
   watch?: boolean,
   workerPath: ?string,
+  useStableId: boolean,
 |};
 
 export type BundleOptions = {
@@ -324,7 +325,7 @@ class Server {
   }
 
   async buildBundle(options: BundleOptions): Promise<Bundle> {
-    const bundle = await this._bundler.bundle(options);
+    const bundle = await this._bundler.bundle({...options, runBeforeMainModule: this._opts.runBeforeMainModule});
     const modules = bundle.getModules();
     const nonVirtual = modules.filter(m => !m.virtual);
     bundleDeps.set(bundle, {

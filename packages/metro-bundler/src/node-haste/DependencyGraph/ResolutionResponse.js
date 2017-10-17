@@ -22,7 +22,7 @@ class ResolutionResponse<TModule: {hash(): string}, TOptions> {
   options: TOptions;
 
   // This is monkey-patched from Resolver.
-  getModuleId: ?() => number;
+  getModuleId: ?() => number | string;
 
   _mappings: {[hash: string]: Array<[string, TModule]>};
   _finalized: boolean;

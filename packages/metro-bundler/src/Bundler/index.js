@@ -148,13 +148,14 @@ type Options = {|
   +transformModulePath: string,
   +watch: boolean,
   +workerPath: ?string,
+  +useStableId: boolean,
 |};
 
 const {hasOwnProperty} = Object;
 
 class Bundler {
   _opts: Options;
-  _getModuleId: ({path: string}) => number;
+  _getModuleId: (module: Module) => number | string;
   _transformer: Transformer;
   _resolverPromise: Promise<Resolver>;
   _projectRoots: $ReadOnlyArray<string>;
@@ -187,7 +188,7 @@ class Bundler {
       transformModuleHash,
     ];
 
-    this._getModuleId = createModuleIdFactory();
+    this._getModuleId = createModuleIdFactory(this._opts.useStableId);
 
     let getCacheKey = (options: mixed) => '';
     if (opts.transformModulePath) {
@@ -541,7 +542,7 @@ class Bundler {
           assetPlugins,
           options: response.options,
           /* $FlowFixMe: `getModuleId` is monkey-patched */
-          getModuleId: (response.getModuleId: () => number),
+          getModuleId: (response.getModuleId: () => number | string),
           dependencyPairs: response.getResolvedDependencyPairs(module),
         }).then(transformed => {
           modulesByTransport.set(transformed, module);
@@ -662,7 +663,7 @@ class Bundler {
       {dev, platform, recursive, prependPolyfills},
       bundlingOptions,
       onProgress,
-      isolateModuleIDs ? createModuleIdFactory() : this._getModuleId,
+      isolateModuleIDs ? createModuleIdFactory(this._opts.useStableId) : this._getModuleId,
     );
     return response;
   }
@@ -728,7 +729,7 @@ class Bundler {
     bundle: Bundle,
     entryFilePath: string,
     options: BundlingOptions,
-    getModuleId: (module: Module) => number,
+    getModuleId: (module: Module) => number | string,
     dependencyPairs: Array<[string, Module]>,
     assetPlugins: Array<string>,
   }): Promise<ModuleTransport> {

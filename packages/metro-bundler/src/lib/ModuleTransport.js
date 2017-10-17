@@ -27,7 +27,7 @@ type Metadata = {
 
 class ModuleTransport {
   name: string;
-  id: number;
+  id: number | string;
   code: string;
   sourceCode: string;
   sourcePath: string;
@@ -38,7 +38,7 @@ class ModuleTransport {
 
   constructor(data: {
     name: string,
-    id: number,
+    id: number | string,
     code: string,
     sourceCode: string,
     sourcePath: string,

@@ -35,7 +35,7 @@ type Module = {
   exports: Exports,
   hot?: HotModuleReloadingData,
 };
-type ModuleID = number;
+type ModuleID = number | string;
 type ModuleDefinition = {|
   dependencyMap: ?DependencyMap,
   exports: Exports,
@@ -66,7 +66,7 @@ if (__DEV__) {
 
 function define(
   factory: FactoryFn,
-  moduleId: number,
+  moduleId: number | string,
   dependencyMap?: DependencyMap,
 ) {
   if (moduleId in modules) {
@@ -97,7 +97,7 @@ function define(
 }
 
 function require(moduleId: ModuleID | VerboseModuleNameForDev) {
-  if (__DEV__ && typeof moduleId === 'string') {
+  if (__DEV__ && typeof moduleId === 'string' && !/[a-z,0-9]{32}/.test(moduleId)) {
     const verboseName = moduleId;
     moduleId = verboseNamesToModuleIds[verboseName];
     if (moduleId == null) {
@@ -110,12 +110,10 @@ function require(moduleId: ModuleID | VerboseModuleNameForDev) {
     }
   }
 
-  //$FlowFixMe: at this point we know that moduleId is a number
-  const moduleIdReallyIsNumber: number = moduleId;
-  const module = modules[moduleIdReallyIsNumber];
+  const module = modules[moduleId];
   return module && module.isInitialized
     ? module.exports
-    : guardedLoadModule(moduleIdReallyIsNumber, module);
+    : guardedLoadModule(moduleId, module);
 }
 
 require.async = function(moduleId: ModuleID | VerboseModuleNameForDev) {
@@ -144,7 +142,7 @@ const LOCAL_ID_MASK = ~0 >>> ID_MASK_SHIFT;
 
 function loadModuleImplementation(moduleId, module) {
   const nativeRequire = global.nativeRequire;
-  if (!module && nativeRequire) {
+  if (!module && nativeRequire && typeof moduleId === 'number') {
     const bundleId = moduleId >>> ID_MASK_SHIFT;
     const localId = moduleId & LOCAL_ID_MASK;
     nativeRequire(localId, bundleId);

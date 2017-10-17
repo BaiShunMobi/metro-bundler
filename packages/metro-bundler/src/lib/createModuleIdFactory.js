@@ -10,16 +10,29 @@
  */
 
 'use strict';
+const crypto = require('crypto');
+import type Module from '../node-haste/Module';
 
-function createModuleIdFactory(): ({path: string}) => number {
+function createModuleIdFactory(useStableId): (module: Module) => number | string {
   const fileToIdMap = new Map();
   let nextId = 0;
-  return ({path: modulePath}) => {
-    if (!fileToIdMap.has(modulePath)) {
-      fileToIdMap.set(modulePath, nextId);
-      nextId += 1;
+  return (module: Module) => {    
+    if (!fileToIdMap.has(module.path)) {
+      if(useStableId) {
+        fileToIdMap.set(
+          module.path, 
+          crypto.createHash('md5')
+                .update(module.localPath)
+                .update(module._readSourceCode())
+                .digest('hex')
+        );
+      }
+      else {
+        fileToIdMap.set(module.path, nextId);
+        nextId += 1;
+      }      
     }
-    return fileToIdMap.get(modulePath);
+    return fileToIdMap.get(module.path);
   };
 }
 

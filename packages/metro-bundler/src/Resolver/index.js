@@ -183,17 +183,17 @@ class Resolver {
 
   resolveRequires(
     module: Module,
-    getModuleId: ({path: string}) => number,
+    getModuleId: (module: Module) => number | string,
     code: string,
-    dependencyPairs: Map<string, string>,
+    dependencyPairs: Map<string, Module>,
     dependencyOffsets: Array<number> = [],
   ): string {
     const resolvedDeps = Object.create(null);
 
     // here, we build a map of all require strings (relative and absolute)
     // to the canonical ID of the module they reference
-    for (const [name, path] of dependencyPairs) {
-      resolvedDeps[name] = getModuleId({path});
+    for (const [name, module] of dependencyPairs) {
+      resolvedDeps[name] = getModuleId(module);
     }
 
     // if we have a canonical ID for the module imported here,
@@ -227,7 +227,7 @@ class Resolver {
   }: {
     module: Module,
     getModuleId: ({path: string}) => number,
-    dependencyPairs: Map<string, string>,
+    dependencyPairs: Map<string, Module>,
     dependencyOffsets: Array<number>,
     name: string,
     map: ?MappingsMap,
@@ -300,7 +300,8 @@ function replaceDependencyID(stringWithDependencyIDAtStart, resolvedDeps) {
   const dependencyName = match && match[2];
   if (match != null && dependencyName in resolvedDeps) {
     const {length} = match[0];
-    const id = String(resolvedDeps[dependencyName]);
+    const moduleId = resolvedDeps[dependencyName];
+    const id = typeof moduleId === 'string' ? `"${moduleId}"` : `${moduleId}`;
     return (
       padRight(id, length) +
       stringWithDependencyIDAtStart
