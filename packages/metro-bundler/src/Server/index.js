@@ -170,6 +170,7 @@ class Server {
     +transformModulePath: string,
     watch: boolean,
     workerPath: ?string,
+    useStableId: boolean,
   };
   _projectRoots: $ReadOnlyArray<string>;
   _bundles: {};
@@ -228,6 +229,7 @@ class Server {
       useDeltaBundler: options.useDeltaBundler,
       watch: options.watch || false,
       workerPath: options.workerPath,
+      useStableId: options.useStableId,
     };
 
     const processFileChange = ({type, filePath}) =>
