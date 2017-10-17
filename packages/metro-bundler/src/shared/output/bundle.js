@@ -10,7 +10,7 @@
  */
 
 'use strict';
-
+const path = require('path');
 const Server = require('../../Server');
 
 const meta = require('./meta');
@@ -22,6 +22,10 @@ import type {SourceMap} from '../../lib/SourceMap';
 import type {OutputOptions, RequestOptions} from '../types.flow';
 
 function buildBundle(packagerClient: Server, requestOptions: RequestOptions) {
+  if(requestOptions.exclude) {
+    requestOptions.excludedModules = require(path.resolve(process.cwd(), requestOptions.exclude))
+  }
+
   return packagerClient.buildBundle({
     ...Server.DEFAULT_BUNDLE_OPTIONS,
     ...requestOptions,
@@ -58,6 +62,7 @@ function saveBundleAndMap(
     dev,
     sourcemapOutput,
     sourcemapSourcesRoot,
+    manifestOutput,  
   } = options;
 
   log('start');
@@ -65,6 +70,14 @@ function saveBundleAndMap(
   const codeWithMap = bundle.postProcessBundleSourcemap({
     ...origCodeWithMap,
     outFileName: bundleOutput,
+  });
+  const manifest = {};
+  bundle.getModules().forEach(module => {
+    if(!module.meta.preloaded) {      
+      manifest[module.name] = {
+        id: module.id
+      };
+    }    
   });
   log('finish');
 
@@ -78,7 +91,8 @@ function saveBundleAndMap(
     'binary');
   Promise.all([writeBundle, writeMetadata])
     .then(() => log('Done writing bundle output'));
-
+  
+  const writePromises = [writeBundle, writeMetadata];  
   if (sourcemapOutput) {
     log('Writing sourcemap output to:', sourcemapOutput);
     const map = typeof codeWithMap.map !== 'string'
@@ -86,10 +100,17 @@ function saveBundleAndMap(
       : codeWithMap.map;
     const writeMap = writeFile(sourcemapOutput, map, null);
     writeMap.then(() => log('Done writing sourcemap output'));
-    return Promise.all([writeBundle, writeMetadata, writeMap]);
-  } else {
-    return writeBundle;
+    writePromises.push(writeMap);
+  } 
+
+  if (manifestOutput) {
+    log('Writing manifest output to:', manifestOutput);   
+    const writeManifest = writeFile(manifestOutput, JSON.stringify(manifest, null, 2), null);
+    writeManifest.then(() => log('Done writing manifest output'));
+    writePromises.push(writeManifest);
   }
+
+  return Promise.all(writePromises);
 }
 
 exports.build = buildBundle;

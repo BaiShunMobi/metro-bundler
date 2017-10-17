@@ -276,6 +276,7 @@ class Bundler {
     minify: boolean,
     unbundle: boolean,
     sourceMapUrl: ?string,
+    excludedModules: mixed,
   }): Promise<Bundle> {
     const {dev, minify, unbundle} = options;
     const postProcessBundleSourcemap = this._opts.postProcessBundleSourcemap;
@@ -377,6 +378,7 @@ class Bundler {
     runBeforeMainModule,
     runModule,
     unbundle,
+    excludedModules,
   }: {
     assetPlugins?: Array<string>,
     bundle: Bundle | HMRBundle,
@@ -394,6 +396,7 @@ class Bundler {
     runBeforeMainModule?: Array<string>,
     runModule?: boolean,
     unbundle?: boolean,
+    excludedModules?: mixed,
   }) {
     const onResolutionResponse = (
       response: ResolutionResponse<Module, BundlingOptions>,
@@ -405,9 +408,13 @@ class Bundler {
         response.dependencies = response.dependencies.filter(module =>
           module.path.endsWith(entryFile || ''),
         );
+      } else if(excludedModules) {
+        response.dependencies = response.dependencies.filter(dep => {
+          return !excludedModules[dep.getName()];
+        });
       } else {
         response.dependencies = moduleSystemDeps.concat(response.dependencies);
-      }
+      }     
     };
     const finalizeBundle = ({
       bundle: finalBundle,
@@ -460,7 +467,8 @@ class Bundler {
       isolateModuleIDs,
       generateSourceMaps,
       assetPlugins,
-      onProgress,
+      excludedModules,
+      onProgress,      
     });
   }
 
@@ -476,6 +484,7 @@ class Bundler {
     isolateModuleIDs,
     generateSourceMaps,
     assetPlugins,
+    excludedModules,
     onResolutionResponse = emptyFunction,
     onModuleTransformed = emptyFunction,
     finalizeBundle = emptyFunction,
@@ -500,7 +509,7 @@ class Bundler {
         minify,
         isolateModuleIDs,
         generateSourceMaps: unbundle || minify || generateSourceMaps,
-        prependPolyfills: true,
+        prependPolyfills: excludedModules ? false : true,
       });
     }
 
@@ -520,7 +529,7 @@ class Bundler {
       let entryFilePath;
       if (response.dependencies.length > 1) {
         // skip HMR requests
-        const numModuleSystemDependencies = resolver.getModuleSystemDependencies(
+        const numModuleSystemDependencies = excludedModules ? 0 : resolver.getModuleSystemDependencies(
           {dev, unbundle},
         ).length;
 
