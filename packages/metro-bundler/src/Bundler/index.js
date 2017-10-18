@@ -436,7 +436,7 @@ class Bundler {
         .then(() => {
           return Promise.all(
             runBeforeMainModule
-              ? runBeforeMainModule.map(path => this.getModuleForPath(path))
+              ? runBeforeMainModule.map(name => this.getModuleForName(name))
               : [],
           );
         })
@@ -626,6 +626,12 @@ class Bundler {
   getModuleForPath(entryFile: string): Promise<Module> {
     return this._resolverPromise.then(resolver =>
       resolver.getModuleForPath(entryFile),
+    );
+  }
+
+  getModuleForName(name: string): Promise<Module> {
+    return this._resolverPromise.then(resolver =>
+      resolver.getModuleForName(name)
     );
   }
 

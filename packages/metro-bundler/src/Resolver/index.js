@@ -116,6 +116,12 @@ class Resolver {
     return this._depGraph.getModuleForPath(entryFile);
   }
 
+  getModuleForName(name: string): Promise<Module> {
+    return this._depGraph.getAllModules().then(modules => {      
+      return Object.keys(modules).map(path => modules[path]).find(module => module.getName() === name);      
+    });    
+  }
+
   async getDependencies<T: ContainsTransformerOptions>(
     entryPath: string,
     options: {
