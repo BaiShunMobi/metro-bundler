@@ -14,7 +14,7 @@
 
 const DeltaCalculator = require('./DeltaCalculator');
 
-const createModuleIdFactory = require('../lib/createModuleIdFactory');
+const createModuleIdFactory = require('../lib/createNumericModuleIdFactory');
 
 const {EventEmitter} = require('events');
 

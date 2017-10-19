@@ -119,6 +119,9 @@ export type BundleOptions = {
   +runModule: boolean,
   sourceMapUrl: ?string,
   unbundle: boolean,
+  useStableId: boolean,
+  startId: number,
+  excludedModules: mixed
 };
 
 type DependencyOptions = {|
