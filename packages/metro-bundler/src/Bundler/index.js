@@ -518,6 +518,7 @@ class Bundler {
         isolateModuleIDs,
         startId,
         useStableId,
+        excludedModules,
         generateSourceMaps: unbundle || minify || generateSourceMaps,
         prependPolyfills: excludedModules ? false : true,
       });
@@ -655,6 +656,7 @@ class Bundler {
     generateSourceMaps = false,
     startId = 0,
     useStableId = false,
+    excludedModules,
     isolateModuleIDs = false,
     rootEntryFile,
     prependPolyfills,
@@ -690,10 +692,16 @@ class Bundler {
 
     let getModuleId;
     if(useStableId) {
-      getModuleId = (isolateModuleIDs || !this._getStableModuleId) ? createStableModuleIdFactory() : this._getStableModuleId;
+      if(!this._getStableModuleId) {
+        this._getStableModuleId = createStableModuleIdFactory();
+      }
+      getModuleId = isolateModuleIDs ? createStableModuleIdFactory() : this._getStableModuleId;
     }
     else {
-      getModuleId = (isolateModuleIDs || !this._getNumericModuleId) ? createNumericModuleIdFactory(startId) : this._getNumericModuleId;
+      if(!this._getNumericModuleId) {
+        this._getNumericModuleId = createNumericModuleIdFactory(startId);
+      }
+      getModuleId = isolateModuleIDs ? createNumericModuleIdFactory(startId) : this._getNumericModuleId;
     }
 
     const response = await resolver.getDependencies(
@@ -701,7 +709,10 @@ class Bundler {
       {dev, platform, recursive, prependPolyfills},
       bundlingOptions,
       onProgress,
-      getModuleId
+      module => {
+        const name = module.getName();
+        return (excludedModules && excludedModules[name] && excludedModules[name].id) || getModuleId(module)
+      }
     );
     return response;
   }
@@ -712,12 +723,14 @@ class Bundler {
     platform,
     minify,
     generateSourceMaps,
+    excludedModules,
   }: {
     +entryFile: string,
     +dev: boolean,
     +platform: string,
     +minify: boolean,
     +generateSourceMaps: boolean,
+    excludedModules: mixed,
   }) {
     /* $FlowFixMe(>=0.54.0 site=react_native_fb) This comment suppresses an
      * error found when Flow v0.54 was deployed. To see the error delete this
@@ -729,6 +742,7 @@ class Bundler {
       platform,
       minify,
       generateSourceMaps,
+      excludedModules,
       prependPolyfills: true,
     }).then(({dependencies}) => {
       const ret = [];
@@ -928,6 +942,7 @@ class Bundler {
       hot: boolean,
       minify: boolean,
       platform: ?string,
+      excludedModules: mixed,
       +prependPolyfills: boolean,
     |},
   ): Promise<BundlingOptions> {
@@ -938,6 +953,7 @@ class Bundler {
         entryFile,
         projectRoots: this._projectRoots,
         rootEntryFile: entryFile,
+        excludedModules,
         prependPolyfills: false,
       }).then(r => r.dependencies.map(d => d.path));
 
