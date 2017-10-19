@@ -23,7 +23,9 @@ import type {OutputOptions, RequestOptions} from '../types.flow';
 
 function buildBundle(packagerClient: Server, requestOptions: RequestOptions) {
   if(requestOptions.exclude) {
-    requestOptions.excludedModules = require(path.resolve(process.cwd(), requestOptions.exclude))
+    const manifest = require(path.resolve(process.cwd(), requestOptions.exclude));
+    requestOptions.excludedModules = manifest.modules;
+    requestOptions.startId = manifest.lastId ? (manifest.lastId + 1) : 0;
   }
 
   return packagerClient.buildBundle({
@@ -71,14 +73,23 @@ function saveBundleAndMap(
     ...origCodeWithMap,
     outFileName: bundleOutput,
   });
-  const manifest = {};
-  bundle.getModules().forEach(module => {
-    if(!module.meta.preloaded) {      
-      manifest[module.name] = {
+  const manifest = {
+    modules:  Object.create(null),
+    lastId: -1
+  };
+  bundle.getModules().forEach(module => {    
+    if(!module.polyfill && !module.virtual) {      
+      manifest.modules[module.name] = {
         id: module.id
       };
-    }    
+    }   
+    if(module.id && module.id > manifest.lastId) {
+      manifest.lastId = module.id;
+    }
   });
+  if(manifest.lastId === -1) {
+    delete manifest.lastId;
+  }
   log('finish');
 
   log('Writing bundle output to:', bundleOutput);

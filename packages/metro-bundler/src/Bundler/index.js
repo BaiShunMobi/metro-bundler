@@ -27,7 +27,8 @@ const path = require('path');
 const denodeify = require('denodeify');
 const defaults = require('../defaults');
 const toLocalPath = require('../node-haste/lib/toLocalPath');
-const createModuleIdFactory = require('../lib/createModuleIdFactory');
+const createNumericModuleIdFactory = require('../lib/createNumericModuleIdFactory');
+const createStableModuleIdFactory = require('../lib/createStableModuleIdFactory');
 
 const {generateAssetTransformResult, isAssetTypeAnImage} = require('./util');
 
@@ -147,15 +148,15 @@ type Options = {|
   +transformCache: TransformCache,
   +transformModulePath: string,
   +watch: boolean,
-  +workerPath: ?string,
-  +useStableId: boolean,
+  +workerPath: ?string
 |};
 
 const {hasOwnProperty} = Object;
 
 class Bundler {
   _opts: Options;
-  _getModuleId: (module: Module) => number | string;
+  _getNumericModuleId: (module: Module) => number;
+  _getStableModuleId: (module: Module) => string;
   _transformer: Transformer;
   _resolverPromise: Promise<Resolver>;
   _projectRoots: $ReadOnlyArray<string>;
@@ -187,8 +188,6 @@ class Bundler {
         .join('-'),
       transformModuleHash,
     ];
-
-    this._getModuleId = createModuleIdFactory(this._opts.useStableId);
 
     let getCacheKey = (options: mixed) => '';
     if (opts.transformModulePath) {
@@ -378,6 +377,8 @@ class Bundler {
     runBeforeMainModule,
     runModule,
     unbundle,
+    useStableId = false,
+    startId = 0,
     excludedModules,
   }: {
     assetPlugins?: Array<string>,
@@ -396,6 +397,8 @@ class Bundler {
     runBeforeMainModule?: Array<string>,
     runModule?: boolean,
     unbundle?: boolean,
+    useStableId?: boolean,
+    startId?: number,
     excludedModules?: mixed,
   }) {
     const onResolutionResponse = (
@@ -443,11 +446,12 @@ class Bundler {
         .then(runBeforeMainModules => {
           finalBundle.finalize({
             runModule,
-            runBeforeMainModule: runBeforeMainModules.map(module =>
+            runBeforeMainModule: runBeforeMainModules.map(module => {
               /* $FlowFixMe: looks like ResolutionResponse is monkey-patched
                * with `getModuleId`. */
-              response.getModuleId(module),
-            ),
+              const name = module.getName();
+              return (excludedModules && excludedModules[name] && excludedModules[name].id) || response.getModuleId(module);
+            }),
             allowUpdates: this._opts.allowBundleUpdates,
           });
           return finalBundle;
@@ -467,6 +471,8 @@ class Bundler {
       isolateModuleIDs,
       generateSourceMaps,
       assetPlugins,
+      startId,
+      useStableId,
       excludedModules,
       onProgress,      
     });
@@ -484,6 +490,8 @@ class Bundler {
     isolateModuleIDs,
     generateSourceMaps,
     assetPlugins,
+    startId,
+    useStableId,
     excludedModules,
     onResolutionResponse = emptyFunction,
     onModuleTransformed = emptyFunction,
@@ -508,6 +516,8 @@ class Bundler {
         onProgress,
         minify,
         isolateModuleIDs,
+        startId,
+        useStableId,
         generateSourceMaps: unbundle || minify || generateSourceMaps,
         prependPolyfills: excludedModules ? false : true,
       });
@@ -643,6 +653,8 @@ class Bundler {
     hot = false,
     recursive = true,
     generateSourceMaps = false,
+    startId = 0,
+    useStableId = false,
     isolateModuleIDs = false,
     rootEntryFile,
     prependPolyfills,
@@ -655,6 +667,8 @@ class Bundler {
     hot?: boolean,
     recursive?: boolean,
     generateSourceMaps?: boolean,
+    startId?: number,
+    useStableId?: boolean,
     isolateModuleIDs?: boolean,
     +rootEntryFile: string,
     +prependPolyfills: boolean,
@@ -673,12 +687,21 @@ class Bundler {
     );
 
     const resolver = await this._resolverPromise;
+
+    let getModuleId;
+    if(useStableId) {
+      getModuleId = (isolateModuleIDs || !this._getStableModuleId) ? createStableModuleIdFactory() : this._getStableModuleId;
+    }
+    else {
+      getModuleId = (isolateModuleIDs || !this._getNumericModuleId) ? createNumericModuleIdFactory(startId) : this._getNumericModuleId;
+    }
+
     const response = await resolver.getDependencies(
       entryFile,
       {dev, platform, recursive, prependPolyfills},
       bundlingOptions,
       onProgress,
-      isolateModuleIDs ? createModuleIdFactory(this._opts.useStableId) : this._getModuleId,
+      getModuleId
     );
     return response;
   }

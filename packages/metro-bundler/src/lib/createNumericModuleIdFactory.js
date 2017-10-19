@@ -13,27 +13,16 @@
 const crypto = require('crypto');
 import type Module from '../node-haste/Module';
 
-function createModuleIdFactory(useStableId): (module: Module) => number | string {
+function createNumericModuleIdFactory(startId: number): (module: Module) => number {
   const fileToIdMap = new Map();
-  let nextId = 0;
+  let nextId = startId;
   return (module: Module) => {    
-    if (!fileToIdMap.has(module.path)) {
-      if(useStableId) {
-        fileToIdMap.set(
-          module.path, 
-          crypto.createHash('md5')
-                .update(module.localPath)
-                .update(module._readSourceCode())
-                .digest('hex')
-        );
-      }
-      else {
+    if (!fileToIdMap.has(module.path)) {      
         fileToIdMap.set(module.path, nextId);
-        nextId += 1;
-      }      
+        nextId += 1;   
     }
     return fileToIdMap.get(module.path);
   };
 }
 
-module.exports = createModuleIdFactory;
+module.exports = createNumericModuleIdFactory;
