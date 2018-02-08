@@ -1291,6 +1291,11 @@ class Server {
         'inlineSourceMap',
         false,
       ),
+      useStableId: this._getBoolOptionFromQuery(
+        urlObj.query,
+        'useStableId',
+        false
+      ),
       isolateModuleIDs: false,
       platform,
       resolutionResponse: null,
