@@ -276,6 +276,7 @@ class Bundler {
     unbundle: boolean,
     sourceMapUrl: ?string,
     excludedModules: mixed,
+    assetPath: ?string,
   }): Promise<Bundle> {
     const {dev, minify, unbundle} = options;
     const postProcessBundleSourcemap = this._opts.postProcessBundleSourcemap;
@@ -380,6 +381,7 @@ class Bundler {
     useStableId = false,
     startId = 0,
     excludedModules,
+    assetPath,
   }: {
     assetPlugins?: Array<string>,
     bundle: Bundle | HMRBundle,
@@ -400,6 +402,7 @@ class Bundler {
     useStableId?: boolean,
     startId?: number,
     excludedModules?: mixed,
+    assetPath?: string,
   }) {
     const onResolutionResponse = (
       response: ResolutionResponse<Module, BundlingOptions>,
@@ -474,7 +477,8 @@ class Bundler {
       startId,
       useStableId,
       excludedModules,
-      onProgress,      
+      assetPath,
+      onProgress,
     });
   }
 
@@ -493,6 +497,7 @@ class Bundler {
     startId,
     useStableId,
     excludedModules,
+    assetPath,
     onResolutionResponse = emptyFunction,
     onModuleTransformed = emptyFunction,
     finalizeBundle = emptyFunction,
@@ -524,13 +529,18 @@ class Bundler {
       });
     }
 
+    var getAssetPath = new Promise((resolve, reject) => {
+      return resolve(assetPath);
+    })
+
     /* $FlowFixMe(>=0.54.0 site=react_native_fb) This comment suppresses an
      * error found when Flow v0.54 was deployed. To see the error delete this
      * comment and run Flow. */
     return Promise.all([
       this._resolverPromise,
       resolutionResponse,
-    ]).then(([resolver, response]) => {
+      getAssetPath
+    ]).then(([resolver, response, assetPath]) => {
       bundle.setRamGroups(response.options.ramGroups);
 
       log(createActionEndEntry(transformingFilesLogEntry));
@@ -560,6 +570,7 @@ class Bundler {
           bundle,
           entryFilePath,
           assetPlugins,
+          assetPath,
           options: response.options,
           /* $FlowFixMe: `getModuleId` is monkey-patched */
           getModuleId: (response.getModuleId: () => number | string),
@@ -660,6 +671,7 @@ class Bundler {
     isolateModuleIDs = false,
     rootEntryFile,
     prependPolyfills,
+    assetPath,
     onProgress,
   }: {
     entryFile: string,
@@ -674,6 +686,7 @@ class Bundler {
     isolateModuleIDs?: boolean,
     +rootEntryFile: string,
     +prependPolyfills: boolean,
+    assetPath?: string,
     onProgress?: ?(finishedModules: number, totalModules: number) => mixed,
   }): Promise<ResolutionResponse<Module, BundlingOptions>> {
     const bundlingOptions: BundlingOptions = await this.getTransformOptions(
@@ -685,6 +698,7 @@ class Bundler {
         generateSourceMaps,
         minify,
         prependPolyfills,
+        assetPath,
       },
     );
 
@@ -776,11 +790,13 @@ class Bundler {
     getModuleId,
     dependencyPairs,
     assetPlugins,
+    assetPath,
   }: {
     module: Module,
     bundle: Bundle,
     entryFilePath: string,
     options: BundlingOptions,
+    assetPath: string,
     getModuleId: (module: Module) => number | string,
     dependencyPairs: Array<[string, Module]>,
     assetPlugins: Array<string>,
@@ -794,6 +810,7 @@ class Bundler {
         bundle,
         module,
         moduleId,
+        assetPath,
         assetPlugins,
         transformOptions.platform,
       );
@@ -832,10 +849,12 @@ class Bundler {
   generateAssetObjAndCode(
     module: Module,
     assetPlugins: Array<string>,
+    assetPath: ?string = 'assets',
     platform: ?string = null,
   ) {
     const localPath = toLocalPath(this._projectRoots, module.path);
-    var assetUrlPath = joinPath('/assets', pathDirname(localPath));
+    const assetStartPath = path.basename(path.normalize(assetPath))
+    var assetUrlPath = joinPath('/' + assetStartPath, pathDirname(localPath));
 
     // On Windows, change backslashes to slashes to get proper URL path from file path.
     if (pathSeparator === '\\') {
@@ -913,12 +932,14 @@ class Bundler {
     bundle: Bundle,
     module: Module,
     moduleId: number,
+    assetPath: string,
     assetPlugins: Array<string> = [],
     platform: ?string = null,
   ) {
     return this.generateAssetObjAndCode(
       module,
       assetPlugins,
+      assetPath,
       platform,
     ).then(({asset, code, meta}) => {
       bundle.addAsset(asset);
