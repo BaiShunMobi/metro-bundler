@@ -1273,6 +1273,8 @@ class Server {
       false,
     );
 
+    // const excludedModules = JSON.parse(urlObj.query.excludedModules);
+
     return {
       sourceMapUrl: url.format({
         ...urlObj,
@@ -1308,6 +1310,7 @@ class Server {
       assetPlugins,
       onProgress: null,
       unbundle: false,
+      // excludedModules: excludedModules
     };
   }
 
