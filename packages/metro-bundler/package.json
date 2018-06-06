@@ -1,5 +1,5 @@
 {
-  "version": "0.20.10",
+  "version": "0.20.11",
   "name": "@lotteryrn/metro-bundler",
   "description": "The JavaScript bundler for React Native.",
   "main": "src/index.js",

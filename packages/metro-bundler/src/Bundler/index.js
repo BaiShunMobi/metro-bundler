@@ -853,8 +853,8 @@ class Bundler {
     platform: ?string = null,
   ) {
     const localPath = toLocalPath(this._projectRoots, module.path);
-    const assetStartPath = path.basename(path.normalize(assetPath))
-    var assetUrlPath = joinPath('/' + assetStartPath, pathDirname(localPath));
+    const assetStartPath = path.normalize(assetPath);
+    var assetUrlPath = joinPath('/', assetStartPath, pathDirname(localPath));
 
     // On Windows, change backslashes to slashes to get proper URL path from file path.
     if (pathSeparator === '\\') {
